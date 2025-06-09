@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>30 Büyük Şehir Hava Durumu + Arama + Vurgulu Sonuç</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #eef2f5; padding: 20px; }
+    h1 { text-align: center; }
+    .container {
+      display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;
+      margin-top: 20px;
+    }
+    .weather-box {
+      background: white; border-radius: 8px; padding: 15px; width: 250px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      position: relative;
+      transition: background-color 0.3s ease, transform 0.3s ease;
+    }
+    .weather-box img {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      width: 50px;
+      height: 50px;
+    }
+    .weather-box.sunny { background-color: #fff9c4; }
+    .weather-box.cloudy { background-color: #cfd8dc; }
+    .weather-box.rainy { background-color: #b3e5fc; }
+    .weather-box.snowy { background-color: #e1f5fe; }
+    .weather-box.stormy { background-color: #90a4ae; color: white; }
+    .weather-box.highlight {
+      border: 3px solid #ff9800;
+      background-color: #fff3e0 !important;
+      box-shadow: 0 0 15px rgba(255, 152, 0, 0.7);
+      transform: scale(1.05);
+      z-index: 10;
+      position: relative;
+    }
+    form {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    input[type="text"] {
+      padding: 8px;
+      width: 200px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    button {
+      padding: 8px 15px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: none;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+      margin-left: 8px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #error-message {
+      color: red;
+      text-align: center;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Türkiye 30 Büyük Şehir Hava Durumu + Arama</h1>
+
+  <form id="search-form">
+    <input type="text" id="city-input" placeholder="Şehir adı yaz ve ara..." />
+    <button type="submit">Hava Durumu Getir</button>
+  </form>
+
+  <div id="error-message"></div>
+
+  <div class="container" id="weather-container"></div>
+
+  <script>
+    const API_KEY = "2045a50bf60e43418e131447e8361f1e";  // Kendi API anahtarınla değiştir!
+    let cities = [
+      "Istanbul", "Ankara", "Izmir", "Bursa", "Antalya",
+      "Adana", "Konya", "Gaziantep", "Mersin", "Kayseri",
+      "Eskisehir", "Diyarbakir", "Samsun", "Denizli", "Sanliurfa",
+      "Malatya", "Trabzon", "Van", "Kahramanmaras", "Batman",
+      "Tekirdag", "Corum", "Aydin", "Elazig", "Rize",
+      "Sakarya", "Hatay", "Kütahya", "Zonguldak", "Ordu"
+    ];
+
+    const container = document.getElementById('weather-container');
+    const errorMessage = document.getElementById('error-message');
+
+    function getWeatherClass(description) {
+      description = description.toLowerCase();
+      if (description.includes('clear')) return 'sunny';
+      if (description.includes('cloud')) return 'cloudy';
+      if (description.includes('rain') || description.includes('drizzle')) return 'rainy';
+      if (description.includes('snow')) return 'snowy';
+      if (description.includes('storm') || description.includes('thunder')) return 'stormy';
+      return '';
+    }
+
+    function getIconUrl(icon) {
+      return `http://openweathermap.org/img/wn/${icon}@2x.png`;
+    }
+
+    function fetchWeather(city) {
+      errorMessage.textContent = '';
+      return fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric&lang=tr`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.cod !== 200) throw new Error(data.message || "Bilinmeyen hata");
+          return data;
+        });
+    }
+
+    function createWeatherBox(data) {
+      const box = document.createElement('div');
+      const weatherClass = getWeatherClass(data.weather[0].description);
+      box.className = 'weather-box ' + weatherClass;
+      box.innerHTML = `
+        <h3>📍 ${data.name} (${data.sys.country})</h3>
+        <img src="${getIconUrl(data.weather[0].icon)}" alt="Hava İkonu" />
+        <p>🌡️ Sıcaklık: ${data.main.temp} °C</p>
+        <p>🌤️ Hava Durumu: ${data.weather[0].description}</p>
+        <p>💧 Nem: %${data.main.humidity}</p>
+        <p>🌬️ Rüzgar Hızı: ${data.wind.speed} m/s</p>
+        <p>📊 Basınç: ${data.main.pressure} hPa</p>
+      `;
+      return box;
+    }
+
+    function showAllCitiesWeather() {
+      container.innerHTML = '';
+      Promise.all(cities.map(city => fetchWeather(city)
+        .then(data => {
+          const box = createWeatherBox(data);
+          container.appendChild(box);
+        })
+        .catch(err => {
+          console.warn(city + ' için veri alınamadı: ' + err.message);
+        })
+      ));
+    }
+
+    // 10 dakikada bir otomatik güncelle
+    setInterval(() => {
+      showAllCitiesWeather();
+      console.log("🌦️ Hava durumu verileri güncellendi.");
+    }, 10 * 60 * 1000);
+
+    showAllCitiesWeather();
+
+    const form = document.getElementById('search-form');
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const cityInput = document.getElementById('city-input').value.trim();
+      if (!cityInput) {
+        errorMessage.textContent = "Lütfen bir şehir adı giriniz.";
+        return;
+      }
+      errorMessage.textContent = '';
+      fetchWeather(cityInput)
+        .then(data => {
+          // Öncelikle tüm kutulardan highlight sınıfını kaldır
+          const allBoxes = container.querySelectorAll('.weather-box');
+          allBoxes.forEach(box => box.classList.remove('highlight'));
+
+          // Aynı şehir varsa onu sil
+          const existingBoxes = [...container.children];
+          for (const box of existingBoxes) {
+            if (box.querySelector('h3').textContent.toLowerCase().includes(data.name.toLowerCase())) {
+              container.removeChild(box);
+              break;
+            }
+          }
+          // Yeni kutuyu oluşturup en başa ekle
+          const box = createWeatherBox(data);
+          box.classList.add('highlight');  // vurgulama için sınıf ekle
+          container.prepend(box);
+
+          if (!cities.some(c => c.toLowerCase() === data.name.toLowerCase())) {
+            cities.push(data.name);
+          }
+        })
+        .catch(err => {
+          errorMessage.textContent = `Şehir bulunamadı veya API hatası: ${err.message}`;
+        });
+    });
+  </script>
+</body>
+</html>
