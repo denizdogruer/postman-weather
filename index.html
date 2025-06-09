@@ -81,7 +81,7 @@
   <div class="container" id="weather-container"></div>
 
   <script>
-    const API_KEY = "2045a50bf60e43418e131447e8361f1e";  // Kendi API anahtarınla değiştir!
+    const API_KEY = "2045a50bf60e43418e131447e8361f1e";  
     let cities = [
       "Istanbul", "Ankara", "Izmir", "Bursa", "Antalya",
       "Adana", "Konya", "Gaziantep", "Mersin", "Kayseri",
@@ -108,6 +108,14 @@
       return `http://openweathermap.org/img/wn/${icon}@2x.png`;
     }
 
+    function getTimeOfDay() {
+      const hour = new Date().getHours();
+      if (hour >= 5 && hour < 12) return "🌅 Sabah";
+      if (hour >= 12 && hour < 17) return "🏙️ Öğle";
+      if (hour >= 17 && hour < 21) return "🌇 Akşam";
+      return "🌃 Gece";
+    }
+
     function fetchWeather(city) {
       errorMessage.textContent = '';
       return fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric&lang=tr`)
@@ -125,6 +133,7 @@
       box.innerHTML = `
         <h3>📍 ${data.name} (${data.sys.country})</h3>
         <img src="${getIconUrl(data.weather[0].icon)}" alt="Hava İkonu" />
+        <p>🕒 Zaman: <strong>${getTimeOfDay()}</strong></p>
         <p>🌡️ Sıcaklık: ${data.main.temp} °C</p>
         <p>🌤️ Hava Durumu: ${data.weather[0].description}</p>
         <p>💧 Nem: %${data.main.humidity}</p>
@@ -147,7 +156,6 @@
       ));
     }
 
-    // 10 dakikada bir otomatik güncelle
     setInterval(() => {
       showAllCitiesWeather();
       console.log("🌦️ Hava durumu verileri güncellendi.");
@@ -166,11 +174,9 @@
       errorMessage.textContent = '';
       fetchWeather(cityInput)
         .then(data => {
-          // Öncelikle tüm kutulardan highlight sınıfını kaldır
           const allBoxes = container.querySelectorAll('.weather-box');
           allBoxes.forEach(box => box.classList.remove('highlight'));
 
-          // Aynı şehir varsa onu sil
           const existingBoxes = [...container.children];
           for (const box of existingBoxes) {
             if (box.querySelector('h3').textContent.toLowerCase().includes(data.name.toLowerCase())) {
@@ -178,9 +184,9 @@
               break;
             }
           }
-          // Yeni kutuyu oluşturup en başa ekle
+
           const box = createWeatherBox(data);
-          box.classList.add('highlight');  // vurgulama için sınıf ekle
+          box.classList.add('highlight');
           container.prepend(box);
 
           if (!cities.some(c => c.toLowerCase() === data.name.toLowerCase())) {
