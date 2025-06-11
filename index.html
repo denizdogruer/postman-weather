@@ -143,6 +143,69 @@
       return box;
     }
 
+    // JSON-LD oluşturma fonksiyonu
+    function createJSONLD(data) {
+      const sunriseISO = new Date(data.sys.sunrise * 1000).toISOString();
+      const sunsetISO = new Date(data.sys.sunset * 1000).toISOString();
+
+      const jsonld = {
+        "@context": {
+          "name": "http://schema.org/name",
+          "country": "http://schema.org/addressCountry",
+          "temperature": {
+            "@id": "http://schema.org/temperature",
+            "@type": "http://www.w3.org/2001/XMLSchema#float"
+          },
+          "humidity": "http://schema.org/humidity",
+          "weatherCondition": "http://schema.org/weatherCondition",
+          "windSpeed": {
+            "@id": "http://schema.org/windSpeed",
+            "@type": "http://www.w3.org/2001/XMLSchema#float"
+          },
+          "pressure": {
+            "@id": "http://schema.org/pressure",
+            "@type": "http://www.w3.org/2001/XMLSchema#integer"
+          },
+          "windDirection": "http://schema.org/windDirection",
+          "coordinates": "http://schema.org/GeoCoordinates",
+          "latitude": "http://schema.org/latitude",
+          "longitude": "http://schema.org/longitude",
+          "sunrise": "http://schema.org/sunrise",
+          "sunset": "http://schema.org/sunset"
+        },
+        "@type": "http://schema.org/City",
+        "name": data.name,
+        "country": data.sys.country,
+        "temperature": data.main.temp,
+        "humidity": data.main.humidity,
+        "pressure": data.main.pressure,
+        "weatherCondition": data.weather[0].description,
+        "windSpeed": data.wind.speed,
+        "windDirection": data.wind.deg,
+        "coordinates": {
+          "@type": "GeoCoordinates",
+          "latitude": data.coord.lat,
+          "longitude": data.coord.lon
+        },
+        "sunrise": sunriseISO,
+        "sunset": sunsetISO
+      };
+
+      return JSON.stringify(jsonld, null, 2);
+    }
+
+    // JSON-LD script elementini ekleme/kaldırma fonksiyonu
+    function addJSONLDScript(data) {
+      const existingScript = document.getElementById('jsonld-script');
+      if (existingScript) existingScript.remove();
+
+      const script = document.createElement('script');
+      script.type = 'application/ld+json';
+      script.id = 'jsonld-script';
+      script.textContent = createJSONLD(data);
+      document.head.appendChild(script);
+    }
+
     function showAllCitiesWeather() {
       container.innerHTML = '';
       Promise.all(cities.map(city => fetchWeather(city)
@@ -159,24 +222,25 @@
     setInterval(() => {
       showAllCitiesWeather();
       console.log("🌦️ Hava durumu verileri güncellendi.");
-    }, 10 * 60 * 1000);
+    }, 5 * 60 * 1000); // 5 dakikada bir güncelle
 
-    showAllCitiesWeather();
-
-    const form = document.getElementById('search-form');
-    form.addEventListener('submit', e => {
+    document.getElementById('search-form').addEventListener('submit', e => {
       e.preventDefault();
       const cityInput = document.getElementById('city-input').value.trim();
       if (!cityInput) {
-        errorMessage.textContent = "Lütfen bir şehir adı giriniz.";
+        errorMessage.textContent = "Lütfen bir şehir adı girin.";
         return;
       }
-      errorMessage.textContent = '';
+
       fetchWeather(cityInput)
         .then(data => {
+          errorMessage.textContent = '';
+
+          // Tüm kutucukların vurgusunu kaldır
           const allBoxes = container.querySelectorAll('.weather-box');
           allBoxes.forEach(box => box.classList.remove('highlight'));
 
+          // Aynı şehirden varsa önce kaldır
           const existingBoxes = [...container.children];
           for (const box of existingBoxes) {
             if (box.querySelector('h3').textContent.toLowerCase().includes(data.name.toLowerCase())) {
@@ -185,18 +249,28 @@
             }
           }
 
+          // Yeni kutu oluşturup en başa ekle, vurgula
           const box = createWeatherBox(data);
           box.classList.add('highlight');
           container.prepend(box);
 
+          // JSON-LD scriptini sayfaya ekle
+          addJSONLDScript(data);
+
+          // Eğer yeni şehirse listeye ekle
           if (!cities.some(c => c.toLowerCase() === data.name.toLowerCase())) {
             cities.push(data.name);
           }
+
+          document.getElementById('city-input').value = '';
         })
         .catch(err => {
           errorMessage.textContent = `Şehir bulunamadı veya API hatası: ${err.message}`;
         });
     });
+
+    // Sayfa açılır açılmaz büyük şehirlerin hava durumlarını göster
+    showAllCitiesWeather();
   </script>
 </body>
 </html>
